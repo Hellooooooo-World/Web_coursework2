@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
@@ -65,3 +65,14 @@ def test_crawl_invokes_progress_per_page() -> None:
     crawler = Crawler(session=session, sleeper=lambda _: None)
     crawler.crawl(progress=progress)
     assert events and events[0][0] == 1
+
+
+@patch("src.crawler.extract_visible_text", side_effect=ValueError("simulate parse failure"))
+def test_crawl_indexes_empty_text_when_extraction_raises(_mock_extract: MagicMock) -> None:
+    session = MagicMock()
+    session.get.return_value.text = "<html><body>x</body></html>"
+    session.get.return_value.raise_for_status = MagicMock()
+    crawler = Crawler(session=session, sleeper=lambda _: None)
+    docs = crawler.crawl()
+    assert len(docs) == 1
+    assert docs[0].text == ""

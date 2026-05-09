@@ -9,6 +9,8 @@ from typing import Any
 
 from .crawler import PageDocument
 
+INDEX_FORMAT_VERSION = 1
+
 # Word tokens: letters and digits; apostrophe inside words (e.g. don't).
 _TOKEN_RE = re.compile(r"[a-z0-9]+(?:'[a-z0-9]+)?", re.IGNORECASE)
 
@@ -34,7 +36,7 @@ def build_inverted_index(documents: list[PageDocument]) -> dict[str, Any]:
             )
             page_entry["frequency"] += 1
             page_entry["positions"].append(position)
-    return {"version": 1, "inverted": inverted}
+    return {"version": INDEX_FORMAT_VERSION, "inverted": inverted}
 
 
 def save_index(index: dict[str, Any], path: str | Path) -> None:
@@ -50,4 +52,13 @@ def load_index(path: str | Path) -> dict[str, Any]:
         data = json.load(f)
     if not isinstance(data, dict) or "inverted" not in data:
         raise ValueError("Invalid index file: missing 'inverted' root key")
+    ver = data.get("version")
+    if ver != INDEX_FORMAT_VERSION:
+        raise ValueError(
+            f"Invalid index file: expected format version {INDEX_FORMAT_VERSION}, "
+            f"found {ver!r}. Re-run 'build' to regenerate the index.",
+        )
+    inv = data["inverted"]
+    if not isinstance(inv, dict):
+        raise ValueError("Invalid index file: 'inverted' must be an object.")
     return data

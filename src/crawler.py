@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -10,6 +11,8 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://quotes.toscrape.com"
 POLITENESS_SECONDS = 6.0
@@ -97,6 +100,7 @@ class Crawler:
         )
         self._sleeper = sleeper or time.sleep
         self._last_request_monotonic: float | None = None
+        self.failed_fetch_count = 0
 
     def _wait_politeness(self) -> None:
         if self._last_request_monotonic is None:
@@ -131,6 +135,7 @@ class Crawler:
         visited: set[str] = set()
         queue: deque[str] = deque([start])
         documents: list[PageDocument] = []
+        self.failed_fetch_count = 0
 
         while queue:
             url = queue.popleft()
@@ -140,10 +145,17 @@ class Crawler:
 
             try:
                 html = self.fetch(url)
-            except requests.RequestException:
+            except requests.RequestException as exc:
+                self.failed_fetch_count += 1
+                logger.warning("Fetch failed for %s: %s", url, exc)
                 continue
 
-            text = extract_visible_text(html)
+            try:
+                text = extract_visible_text(html)
+            except Exception as exc:
+                logger.warning("Could not parse/extract text from %s: %s", url, exc)
+                text = ""
+
             documents.append(PageDocument(url=url, text=text))
             if progress is not None:
                 progress(url, len(documents), len(queue))

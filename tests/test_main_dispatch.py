@@ -6,8 +6,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
-from src.crawler import PageDocument
+from src.crawler import Crawler, PageDocument
 from src.main import SearchShell, main, run_interactive
 
 
@@ -113,6 +114,31 @@ def test_build_no_pages(mock_crawler_cls: MagicMock, tmp_path: Path) -> None:
     shell = SearchShell(index_path=tmp_path / "idx.json")
     out = shell.dispatch(["build"])
     assert "No pages retrieved" in out
+
+
+@patch("src.main.Crawler")
+def test_build_warns_when_some_fetches_fail(mock_crawler_cls: MagicMock, tmp_path: Path) -> None:
+    session = MagicMock()
+    html_home = (
+        '<html><body><a href="https://quotes.toscrape.com/page/2/">next</a></body></html>'
+    )
+
+    def fake_get(url: str, **_kwargs):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        if "page/2" in url:
+            raise requests.ConnectionError("simulated failure")
+        resp.text = html_home
+        return resp
+
+    session.get.side_effect = fake_get
+    real_crawler = Crawler(session=session, sleeper=lambda _: None)
+    mock_crawler_cls.return_value = real_crawler
+
+    shell = SearchShell(index_path=tmp_path / "idx.json")
+    out = shell.dispatch(["build"])
+    assert "Done" in out
+    assert "could not be fetched" in out
 
 
 def test_main_one_shot_command(tmp_path: Path) -> None:

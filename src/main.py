@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import shlex
 import sys
 from pathlib import Path
@@ -11,6 +12,11 @@ from typing import Any, Callable
 from .crawler import Crawler
 from .indexer import build_inverted_index, load_index, save_index
 from .search import find_pages, format_print_word
+
+
+def _configure_logging(verbose: bool) -> None:
+    level = logging.DEBUG if verbose else logging.WARNING
+    logging.basicConfig(level=level, format="%(levelname)s: %(message)s", force=True)
 
 
 def default_index_path() -> Path:
@@ -60,10 +66,17 @@ class SearchShell:
         save_index(idx, self.index_path)
         self.index = idx
         n_terms = len(idx.get("inverted", {}))
-        return (
-            f"Done. Indexed {len(docs)} pages; {n_terms} distinct tokens.\n"
-            f"Saved index to {self.index_path}"
-        )
+        lines = [
+            f"Done. Indexed {len(docs)} pages; {n_terms} distinct tokens.",
+            f"Saved index to {self.index_path}",
+        ]
+        failed = getattr(crawler, "failed_fetch_count", 0)
+        if isinstance(failed, int) and failed > 0:
+            lines.append(
+                f"Warning: {failed} URL(s) could not be fetched "
+                "(network or HTTP errors); results use successfully retrieved pages only.",
+            )
+        return "\n".join(lines)
 
     def _cmd_load(self) -> str:
         try:
@@ -149,7 +162,15 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Run one command non-interactively then exit (e.g. 'load' or 'print good')",
     )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Verbose logging (includes informational crawler messages)",
+    )
     args = parser.parse_args(argv)
+
+    _configure_logging(args.verbose)
 
     index_path = args.index or default_index_path()
     if args.command is not None:
