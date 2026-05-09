@@ -133,8 +133,3 @@ pytest --cov=src --cov-report=term-missing
 
 Typical overall line coverage for `src/` is **above 95%** (only rare branches such as duplicate-queue edge cases or the `__main__` entry shim may remain unhit when importing the package).
 
-## Submission checklist (Minerva)
-
-- Working **video link** (permissions checked in a private/incognito window).
-- **GitHub** repository URL with this code and README.
-- **`build`** output: attach **`data/index.json`** (or the path you passed to `--index`) if required by the brief.
