@@ -57,19 +57,39 @@ src/
   main.py       # Interactive CLI
 tests/
   test_crawler.py
+  test_crawler_edges.py
   test_indexer.py
   test_search.py
+  test_main_shell.py
+  test_main_dispatch.py
+  test_integration_pipeline.py
+  test_performance_search.py
+  test_cli_integration.py
 data/
   index.json    # produced by `build` (submit this with your coursework)
 ```
 
 ## Tests
 
+The suite is split into:
+
+- **Unit tests**: crawler/indexer/search parsing, URL rules, shell command dispatch, mocked `build`, error paths.
+- **Integration tests**: mocked crawl → save index → new shell `load` → `find`/`print`; subprocess smoke tests for `python -m src.main`.
+- **Performance tests**: repeated `find` on a large synthetic index with a loose latency bound (regression guard).
+
+Run all tests (no live crawling):
+
 ```bash
 pytest
 ```
 
-Tests use mocks and **do not** hit the network.
+Coverage report (requires `pytest-cov`, listed in `requirements.txt`):
+
+```bash
+pytest --cov=src --cov-report=term-missing
+```
+
+Typical overall line coverage for `src/` is **above 95%** (only rare branches such as duplicate-queue edge cases or the `__main__` entry shim may remain unhit when importing the package).
 
 ## Notes for your video / submission
 

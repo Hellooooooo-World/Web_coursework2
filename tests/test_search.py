@@ -27,6 +27,11 @@ def test_format_print_unknown_word() -> None:
     assert "No index entry" in out
 
 
+def test_format_print_empty_word() -> None:
+    out = format_print_word({"inverted": {}}, "   ")
+    assert "empty word" in out
+
+
 def test_format_print_shows_urls_stats() -> None:
     idx = _sample_index()
     out = format_print_word(idx, "good")
